@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Movie Revenue Forecast</title>
+<style>
+:root{
+  --bg:#edf0f3; --surface:#ffffff; --ink:#1b2530; --muted:#5d6b7a; --line:#d5dbe2;
+  --actual:#1b2530; --fc:#0b7a86; --fc-soft:rgba(11,122,134,.09); --warn:#a8650c; --focus:#0b7a86;
+  --head:#17212b; --head-ink:#f3f6f8; --head-muted:#a9b6c3;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#10161c; --surface:#18212a; --ink:#e7edf2; --muted:#92a1b0; --line:#2a3642;
+    --actual:#e7edf2; --fc:#38c3d0; --fc-soft:rgba(56,195,208,.10); --warn:#e0a24a; --focus:#38c3d0;
+    --head:#0b1015; --head-ink:#f3f6f8; --head-muted:#8fa0b0;
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Avenir Next","Segoe UI",system-ui,-apple-system,Roboto,sans-serif}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.num,td.n,th.n{font-variant-numeric:tabular-nums}
+header.top{background:var(--head);color:var(--head-ink);padding:22px 16px 0}
+.wrap{max-width:1120px;margin:0 auto}
+.top-row{display:flex;flex-wrap:wrap;gap:16px 32px;align-items:flex-end;justify-content:space-between}
+h1{margin:0;font:600 24px/1.2 "Iowan Old Style","Palatino Linotype",Georgia,serif;letter-spacing:.2px}
+.sub{margin:4px 0 0;color:var(--head-muted);font-size:13.5px}
+.horizon{display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--head-muted)}
+.horizon select{background:#0f1a23;color:var(--head-ink);border:1px solid #33475a;border-radius:6px;padding:7px 10px;font:inherit;font-size:14px;min-width:210px}
+.tabs{display:flex;gap:2px;margin-top:20px;overflow-x:auto}
+.tabs button{background:transparent;color:var(--head-muted);border:0;border-bottom:3px solid transparent;padding:10px 16px;font:inherit;font-weight:600;cursor:pointer;white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--head-ink);border-bottom-color:var(--fc)}
+.tabs button:hover{color:var(--head-ink)}
+main{padding:20px 16px 56px}
+.panel{display:none}.panel.active{display:block}
+.bar{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end;margin-bottom:18px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted)}
+input[type=text],input[type=month],textarea,select.inp{background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:9px 11px;font:inherit;min-width:0}
+input.search{width:min(440px,calc(100vw - 32px))}
+textarea{width:min(560px,calc(100vw - 64px));min-height:96px;resize:vertical;font-family:inherit}
+button.btn{background:var(--fc);color:#fff;border:0;border-radius:6px;padding:9px 16px;font:inherit;font-weight:600;cursor:pointer}
+button.btn.ghost{background:transparent;color:var(--fc);border:1px solid var(--fc)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px 18px;margin-bottom:16px}
+.card h2{margin:0 0 10px;font-size:15.5px;font-weight:650}
+.card h3{margin:0 0 8px;font-size:14px;font-weight:650}
+.title-line{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px;margin-bottom:12px}
+.title-line h2{margin:0;font:600 21px/1.25 "Iowan Old Style","Palatino Linotype",Georgia,serif}
+.muted{color:var(--muted)}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px 22px;margin:0}
+.facts div{border-left:3px solid var(--line);padding-left:10px}
+.facts dt{font-size:12px;color:var(--muted)}
+.facts dd{margin:1px 0 0;font-size:17px;font-weight:600}
+.facts .fc{border-left-color:var(--fc)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:760px){.grid2{grid-template-columns:1fr}}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:7px 10px;text-align:left;border-bottom:1px solid var(--line)}
+th{font-weight:600;color:var(--muted);font-size:12.5px;white-space:nowrap}
+th.n,td.n{text-align:right}
+tbody tr:last-child td{border-bottom:0}
+tr.sum td{font-weight:650;border-top:1px solid var(--ink)}
+td .tag{font-size:11.5px;color:var(--warn);margin-left:6px}
+.scroll{overflow-x:auto}
+.legend{display:flex;gap:16px;font-size:12.5px;color:var(--muted);margin:2px 0 6px}
+.legend i{display:inline-block;width:18px;height:0;border-top:3px solid var(--actual);vertical-align:middle;margin-right:6px}
+.legend i.f{border-top:3px dashed var(--fc)}
+svg.chart{width:100%;height:auto;display:block}
+svg.chart text{fill:var(--muted);font-size:11.5px;font-family:inherit}
+details{margin-top:10px}
+details>summary{cursor:pointer;color:var(--fc);font-weight:600;padding:4px 0}
+.msg{padding:12px 14px;border-radius:6px;border:1px solid var(--warn);color:var(--warn);background:transparent;margin-bottom:14px}
+.empty{color:var(--muted);padding:26px 4px}
+.scope{margin:0 0 16px;padding:9px 13px;border-left:3px solid var(--warn);background:var(--surface);color:var(--muted);font-size:13.5px;border-radius:0 6px 6px 0}
+.movie-block{border:1px solid var(--line);border-radius:8px;margin-bottom:10px;background:var(--surface)}
+.movie-block>summary{padding:11px 14px;list-style:none;display:flex;flex-wrap:wrap;gap:4px 18px;justify-content:space-between}
+.movie-block>summary::-webkit-details-marker{display:none}
+.movie-block[open]>summary{border-bottom:1px solid var(--line)}
+.movie-block .inner{padding:12px 14px}
+.lnk{color:var(--fc);cursor:pointer;text-decoration:underline;background:none;border:0;font:inherit;padding:0;text-align:left}
+footer{max-width:1120px;margin:0 auto;padding:0 16px 36px;color:var(--muted);font-size:12.5px}
+@media (prefers-reduced-motion:no-preference){.panel.active{animation:in .18s ease-out}@keyframes in{from{opacity:.4}to{opacity:1}}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="top-row">
+      <div>
+        <h1>Movie revenue forecast</h1>
+        <p class="sub" id="subline">Loading data…</p>
+      </div>
+      <label class="horizon">Forecast horizon
+        <select id="horizon" aria-label="Forecast horizon in months"></select>
+      </label>
+    </div>
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tab-movie" aria-selected="true" data-tab="movie">Existing Movie</button>
+      <button role="tab" id="tab-manual" aria-selected="false" data-tab="manual">New / Manual Entry</button>
+      <button role="tab" id="tab-provider" aria-selected="false" data-tab="provider">Content Provider</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="loadmsg"></div>
+  <p class="scope" id="scope"></p>
+
+  <section class="panel active" id="panel-movie" role="tabpanel" aria-labelledby="tab-movie">
+    <div class="bar">
+      <label class="f">Search movie
+        <input type="text" class="search" id="movieSearch" list="movieList" placeholder="Start typing a movie name" autocomplete="off">
+      </label>
+      <datalist id="movieList"></datalist>
+    </div>
+    <div id="movieOut"></div>
+  </section>
+
+  <section class="panel" id="panel-manual" role="tabpanel" aria-labelledby="tab-manual">
+    <div class="card">
+      <h2>Forecast a movie that is not in the file</h2>
+      <p class="muted" style="margin-top:0">Enter its monthly revenue from the release month onward. The forecast uses the same model as the existing movies.</p>
+      <div class="bar">
+        <label class="f">Movie name (optional)<input type="text" id="mName" placeholder="e.g. New Release"></label>
+        <label class="f">Content provider (optional)<input type="text" id="mProv" placeholder="e.g. Sunil T.Films"></label>
+        <label class="f">Release month<input type="month" id="mStart"></label>
+      </div>
+      <label class="f">Revenue per month, starting with the release month
+        <textarea id="mVals" placeholder="12000, 9500, 8100, 7000, 6200"></textarea>
+      </label>
+      <p class="muted" style="margin:6px 0 12px">Separate values with commas, spaces or new lines. Use 0 for a month with no revenue.</p>
+      <div class="bar" style="margin-bottom:0">
+        <button class="btn" id="mGo" type="button">Forecast</button>
+        <button class="btn ghost" id="mEx" type="button">Fill with an example</button>
+      </div>
+    </div>
+    <div id="manualOut"></div>
+  </section>
+
+  <section class="panel" id="panel-provider" role="tabpanel" aria-labelledby="tab-provider">
+    <div class="bar">
+      <label class="f">Search content provider
+        <input type="text" class="search" id="provSearch" list="provList" placeholder="Start typing a provider name" autocomplete="off">
+      </label>
+      <datalist id="provList"></datalist>
+    </div>
+    <div id="provOut"></div>
+  </section>
+</main>
+<footer id="foot"></footer>
+
+<script></script>
+<script>
+"use strict";
+let MODEL=null, DATA=null, HORIZON=42, current={movie:null,provider:null};
+const MN=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const yOf=s=>+s.slice(0,4), mOf=s=>+s.slice(5,7);
+const ymLabel=s=>MN[mOf(s)-1]+" "+yOf(s);
+const nf=new Intl.NumberFormat("en-US");
+const fmt=n=>n===0?"–":nf.format(Math.round(n));
+const fmtAvg=n=>n===0?"–":(Math.abs(n)<100?nf.format(Math.round(n*10)/10):nf.format(Math.round(n)));
+const short=n=>n>=1e6?(n/1e6).toFixed(n>=1e7?0:1).replace(/\.0$/,"")+"M":n>=1e3?Math.round(n/1e3)+"K":String(Math.round(n));
+
+/* ---------------- forecasting engine (same logic as update_data.py) ---------------- */
+function curveAt(g,a){a=Math.max(0,Math.floor(a));const c=MODEL.curves[g],L=c.curve.length;return a<L?c.curve[a]:c.curve[L-1]*Math.pow(c.tail_decay,a-(L-1));}
+function gcd(a,b){while(b){[a,b]=[b,a%b];}return a;}
+function granularity(hist){const P=MODEL.params;let g=0;for(const v of hist){const r=Math.round(v);if(v>0)g=gcd(g,r);}if(!g)g=P.gran_max;return Math.min(Math.max(g,P.gran_min),P.gran_max);}
+function forestPredict(g,x){let s=0;const T=MODEL.forest[g].trees;for(const tr of T){let n=0;while(tr.l[n]!==-1){n=x[tr.f[n]]<=tr.t[n]?tr.l[n]:tr.r[n];}s+=tr.v[n];}return s/T.length;}
+function firstPos(h){for(let i=0;i<h.length;i++)if(h[i]>0)return i;return -1;}
+/* hist = actual values, index 0..t ; moyLast = calendar month (1-12) of last actual ; group = "legacy" | "new".
+   Returns {values, ratio, anchor, gran} */
+function forecastMovie(hist,moyLast,horizon,useML=true,group){
+  const P=MODEL.params,seas=MODEL.seasonal,t=hist.length-1,r=firstPos(hist),zero=()=>({values:new Array(horizon).fill(0),ratio:1,anchor:0,gran:granularity(hist)});
+  if(r<0)return zero();
+  const moy=j=>(((moyLast-1-(t-j))%12)+12)%12+1;
+  let any=false;for(let j=Math.max(0,t-P.anchor_window+1);j<=t;j++)if(hist[j]>0)any=true;
+  if(!any)return zero();
+  const g=granularity(hist), grp=group||(r===0?"legacy":"new"), ageNow=t-r;
+  let num=0,den=0;
+  for(let j=Math.max(0,t-P.anchor_window+1);j<=t;j++)if(hist[j]>0){
+    const w=Math.pow(P.recency_decay,t-j);let v=hist[j]/seas[moy(j)-1];
+    if(P.age_adjust_anchor)v*=curveAt(grp,ageNow)/curveAt(grp,j-r);
+    num+=w*v;den+=w;}
+  const anchor=num/den, nm=h=>((moyLast-1+h)%12)+1;
+  const base=h=>anchor*curveAt(grp,ageNow+h)/curveAt(grp,ageNow)*seas[nm(h)-1];
+  let ratio=1;
+  if(useML&&MODEL.forest[grp]){
+    let tr=1;
+    if(ageNow>=5&&t>=5){const rec=(hist[t]+hist[t-1]+hist[t-2])/3,prev=(hist[t-3]+hist[t-4]+hist[t-5])/3;tr=Math.min(Math.max((rec+1)/(prev+1),0.1),10);}
+    const ang=2*Math.PI*nm(1)/12;
+    const x=[Math.log1p(hist[t]),Math.log1p(hist[r]),ageNow,tr,Math.sin(ang),Math.cos(ang),Math.log1p(base(1))];
+    ratio=Math.min(Math.max(Math.exp(forestPredict(grp,x)),P.ml_clip[0]),P.ml_clip[1]);
+  }
+  const values=[];
+  for(let h=1;h<=horizon;h++){const v=base(h)*(1+(ratio-1)*Math.pow(P.ml_fade,h-1));values.push(Math.floor(v/g+0.5)*g);}
+  return {values,ratio,anchor,gran:g};
+}
+
+/* ---------------- aggregation ---------------- */
+function yearRows(dates,vals,from=0){ // dates: ["YYYY-MM"], vals aligned
+  const m=new Map();
+  for(let i=from;i<dates.length;i++){const y=yOf(dates[i]);const o=m.get(y)||{year:y,months:0,total:0,m0:mOf(dates[i]),m1:0};o.months++;o.total+=vals[i];o.m1=mOf(dates[i]);m.set(y,o);}
+  return [...m.values()].sort((a,b)=>a.year-b.year);
+}
+function chartRows(a,f){ // actual and forecast kept as separate points; a year split at the forecast start shows both halves
+  const sub=r=>r.months<12?MN[r.m0-1]+"–"+MN[r.m1-1]:"";
+  return [...a.map(r=>({year:r.year,months:r.months,total:r.total,fc:false,mixed:false,sub:sub(r)})),...f.map(r=>({year:r.year,months:r.months,total:r.total,fc:true,mixed:false,sub:sub(r)}))];
+}
+function combine(a,f){ // a,f: yearRows -> combined rows
+  const m=new Map();
+  for(const r of a)m.set(r.year,{year:r.year,months:r.months,total:r.total,fc:false,mixed:false});
+  for(const r of f){const o=m.get(r.year)||{year:r.year,months:0,total:0};if(o.months>0)o.mixed=true;o.months+=r.months;o.total+=r.total;o.fc=true;m.set(r.year,o);}
+  return [...m.values()].sort((a,b)=>a.year-b.year);
+}
+const sumArr=(arrs,n)=>{const o=new Array(n).fill(0);for(const a of arrs)for(let i=0;i<n;i++)o[i]+=a[i]||0;return o;};
+
+/* ---------------- rendering helpers ---------------- */
+function table(rows,{tagPartial=false,sum=false}={}){
+  if(!rows.length)return '<p class="muted">Nothing to show.</p>';
+  let h='<div class="scroll"><table><thead><tr><th>Year</th><th class="n">Months</th><th class="n">Total</th><th class="n">Avg / mo</th></tr></thead><tbody>';
+  for(const r of rows)h+=`<tr><td>${r.year}${tagPartial&&r.months<12?'<span class="tag">partial year</span>':''}</td><td class="n">${r.months}</td><td class="n">${fmt(r.total)}</td><td class="n">${fmtAvg(r.total/r.months)}</td></tr>`;
+  if(sum&&rows.length>1){const t=rows.reduce((s,r)=>s+r.total,0),m=rows.reduce((s,r)=>s+r.months,0);h+=`<tr class="sum"><td>All</td><td class="n">${m}</td><td class="n">${fmt(t)}</td><td class="n">${fmtAvg(t/m)}</td></tr>`;}
+  return h+'</tbody></table></div>';
+}
+function chart(rows,label){
+  if(!rows.length)return"";
+  const W=720,H=280,L=58,R=18,T=18,B=44,n=rows.length;
+  const raw=Math.max(...rows.map(r=>r.total),1)*1.1, mag=Math.pow(10,Math.floor(Math.log10(raw/4))), stepN=[1,2,2.5,5,10].map(k=>k*mag).find(k=>raw/k<=4.001)||10*mag, max=stepN*Math.ceil(raw/stepN), ticks=Math.round(max/stepN);
+  const xs=i=>n===1?(L+W-R)/2:L+26+(W-L-R-52)*i/(n-1), ys=v=>H-B-(H-T-B)*v/max;
+  const firstFc=rows.findIndex(r=>r.fc);
+  let s=`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}">`;
+  for(let k=0;k<=ticks;k++){const v=stepN*k,y=ys(v);s+=`<line x1="${L}" x2="${W-R}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${L-8}" y="${y+4}" text-anchor="end">${short(v)}</text>`;}
+  if(firstFc>=0){const x0=firstFc===0?L:xs(firstFc-1);s+=`<rect x="${x0}" y="${T}" width="${W-R-x0}" height="${H-T-B}" fill="var(--fc-soft)"/><text x="${W-R-6}" y="${T+13}" text-anchor="end" style="fill:var(--fc)">forecast</text>`;}
+  let solid="",dash="";
+  rows.forEach((r,i)=>{const p=`${xs(i).toFixed(1)},${ys(r.total).toFixed(1)}`;if(!r.fc||r.mixed)solid+=(solid?" ":"")+p;});
+  const lastActual=rows.map(r=>!r.fc||r.mixed).lastIndexOf(true);
+  const dpts=rows.map((r,i)=>({r,i})).filter(o=>(o.r.fc&&!o.r.mixed)||o.i===lastActual).map(o=>`${xs(o.i).toFixed(1)},${ys(o.r.total).toFixed(1)}`).join(" ");
+  if(solid.includes(" "))s+=`<polyline points="${solid}" fill="none" stroke="var(--actual)" stroke-width="2.2"/>`;
+  if(dpts.includes(" "))s+=`<polyline points="${dpts}" fill="none" stroke="var(--fc)" stroke-width="2.2" stroke-dasharray="6 5"/>`;
+  rows.forEach((r,i)=>{const col=(r.fc&&!r.mixed)?"var(--fc)":"var(--actual)",partial=r.months<12;
+    s+=`<circle cx="${xs(i)}" cy="${ys(r.total)}" r="4.5" fill="${partial?"var(--surface)":col}" stroke="${col}" stroke-width="2"><title>${r.year}: ${fmt(r.total)} over ${r.months} months${partial?" (partial year)":""}${r.mixed?" (actual + forecast)":""}</title></circle>`;
+    s+=`<text x="${xs(i)}" y="${H-18}" text-anchor="middle">${r.year}</text>`+(r.sub?`<text x="${xs(i)}" y="${H-5}" text-anchor="middle" style="font-size:10px;fill:var(--muted)">${r.sub}${r.fc?" fcst":""}</text>`:"");
+    s+=`<text x="${xs(i)}" y="${ys(r.total)-10}" text-anchor="middle" style="fill:var(--ink);font-weight:600">${short(r.total)}</text>`;});
+  return s+`</svg><div class="legend"><span><i></i>Actual</span><span><i class="f"></i>Forecast</span><span>Shaded area = forecast (starts after the last actual month)</span><span>Hollow dot = part of a year</span></div>`;
+}
+function monthTable(aDates,aVals,fDates,fVals,from){
+  let h='<div class="scroll"><table><thead><tr><th>Month</th><th>Type</th><th class="n">Revenue</th></tr></thead><tbody>';
+  for(let i=from;i<aDates.length;i++)h+=`<tr><td>${ymLabel(aDates[i])}</td><td>Actual</td><td class="n">${fmt(aVals[i])}</td></tr>`;
+  for(let i=0;i<fDates.length;i++)h+=`<tr><td>${ymLabel(fDates[i])}</td><td style="color:var(--fc)">Forecast</td><td class="n">${fmt(fVals[i])}</td></tr>`;
+  return h+'</tbody></table></div>';
+}
+function movieBody(info,{showMonths=true}={}){ // info: {aDates,aVals,rel,fDates,fVals}
+  const aRows=yearRows(info.aDates,info.aVals,info.rel), fRows=yearRows(info.fDates,info.fVals,0);
+  const comb=combine(aRows,fRows);
+  return `<div class="grid2"><div class="card"><h3>Actual by year</h3>${table(aRows,{tagPartial:true})}</div>
+  <div class="card"><h3>Forecast by year</h3>${table(fRows,{tagPartial:true})}</div></div>
+  <div class="card"><h2>Yearly total</h2>${chart(chartRows(aRows,fRows),"Yearly total revenue")}</div>
+  ${showMonths?`<details class="card"><summary>Month-by-month values</summary>${monthTable(info.aDates,info.aVals,info.fDates,info.fVals,info.rel)}</details>`:""}`;
+}
+function existingInfo(mv){
+  const aD=DATA.month_dates, fD=DATA.forecast_dates.slice(0,HORIZON), fV=mv.forecast.slice(0,HORIZON);
+  return {aDates:aD,aVals:mv.actual,rel:mv.group==="none"?aD.length:Math.max(mv.release,0),fDates:fD,fVals:fV};
+}
+function releaseText(mv){
+  if(mv.group==="none")return "no revenue recorded";
+  if(mv.group==="legacy")return "already running in "+ymLabel(DATA.month_dates[0])+" (release date earlier)";
+  return "first revenue "+ymLabel(DATA.month_dates[mv.release]);
+}
+const lastFcLabel=()=>ymLabel(DATA.forecast_dates[HORIZON-1]);
+
+/* ---------------- tab: existing movie ---------------- */
+function renderMovie(){
+  const out=$("movieOut"),mv=current.movie;
+  if(!mv){out.innerHTML='<p class="empty">Pick a movie from the list to see its yearly history and forecast.</p>';return;}
+  const info=existingInfo(mv), n=mv.actual.length, last=mv.actual[n-1], f1=mv.forecast[0];
+  const idle=mv.group==="none"?'<p class="muted" style="margin:12px 0 0">This movie has no revenue in the data, so its forecast is 0.</p>':(mv.forecast.every(v=>v===0)?'<p class="muted" style="margin:12px 0 0">No revenue in the last 6 months, so the forecast is 0.</p>':"");
+  const fTotal=info.fVals.reduce((a,b)=>a+b,0);
+  out.innerHTML=`<div class="card"><div class="title-line"><h2>${esc(mv.name)}</h2><span class="muted">${esc(mv.provider)} · ${releaseText(mv)}</span></div>
+  <dl class="facts"><div><dt>Last actual (${ymLabel(DATA.month_dates[n-1])})</dt><dd class="num">${fmt(last)}</dd></div>
+  <div class="fc"><dt>Next month (${ymLabel(DATA.forecast_dates[0])})</dt><dd class="num">${fmt(f1)}</dd></div>
+  <div class="fc"><dt>Forecast total to ${lastFcLabel()}</dt><dd class="num">${fmt(fTotal)}</dd></div></dl>${idle}</div>`+movieBody(info);
+}
+function setMovie(name){const mv=DATA.movies.find(m=>m.name===name);if(mv){current.movie=mv;renderMovie();}}
+
+/* ---------------- tab: manual entry ---------------- */
+function parseVals(s){return s.split(/[\s,;]+/).filter(Boolean).map(Number);}
+function addMonths(ym,k){const t=yOf(ym)*12+(mOf(ym)-1)+k;return `${Math.floor(t/12)}-${String(t%12+1).padStart(2,"0")}`;}
+function renderManual(){
+  const out=$("manualOut");
+  const start=$("mStart").value, vals=parseVals($("mVals").value);
+  if(!start||!vals.length){out.innerHTML="";return;}
+  if(vals.some(v=>!isFinite(v)||v<0)){out.innerHTML='<div class="msg">Revenue values must be numbers that are 0 or more. Check for stray characters.</div>';return;}
+  const r=firstPos(vals);
+  if(r<0){out.innerHTML='<div class="msg">Every month is 0, so the forecast is 0. Enter at least one month with revenue.</div>';return;}
+  const hist=vals.slice(r), startYm=addMonths(start,r), n=hist.length;
+  const aD=hist.map((_,i)=>addMonths(startYm,i)), lastYm=aD[n-1];
+  const res=forecastMovie(hist,mOf(lastYm),HORIZON,true,"new");
+  const fD=res.values.map((_,i)=>addMonths(lastYm,i+1));
+  const info={aDates:aD,aVals:hist,rel:0,fDates:fD,fVals:res.values};
+  const name=$("mName").value.trim()||"New movie", prov=$("mProv").value.trim();
+  const fTotal=res.values.reduce((a,b)=>a+b,0);
+  out.innerHTML=`<div class="card"><div class="title-line"><h2>${esc(name)}</h2><span class="muted">${prov?esc(prov)+" · ":""}first revenue ${ymLabel(startYm)} · ${n} month${n>1?"s":""} entered</span></div>
+  <dl class="facts"><div><dt>Last actual (${ymLabel(lastYm)})</dt><dd class="num">${fmt(hist[n-1])}</dd></div>
+  <div class="fc"><dt>Next month (${ymLabel(fD[0])})</dt><dd class="num">${fmt(res.values[0])}</dd></div>
+  <div class="fc"><dt>Forecast total to ${ymLabel(fD[fD.length-1])}</dt><dd class="num">${fmt(fTotal)}</dd></div>
+  <div><dt>Model correction on next month</dt><dd class="num">×${res.ratio.toFixed(2)}</dd></div></dl>
+  ${n<6?'<p class="muted" style="margin:12px 0 0">Fewer than 6 months entered: the forecast leans on less history and is less reliable.</p>':""}</div>`+movieBody(info);
+}
+
+/* ---------------- tab: content provider ---------------- */
+function renderProvider(){
+  const out=$("provOut"),p=current.provider;
+  if(!p){out.innerHTML='<p class="empty">Pick a content provider from the list to see its movies and combined forecast.</p>';return;}
+  const ms=DATA.movies.filter(m=>m.provider===p);
+  const nA=DATA.month_dates.length, aSum=sumArr(ms.map(m=>m.actual),nA), fSum=sumArr(ms.map(m=>m.forecast.slice(0,HORIZON)),HORIZON);
+  const aRows=yearRows(DATA.month_dates,aSum,0), fRows=yearRows(DATA.forecast_dates.slice(0,HORIZON),fSum,0);
+  const comb=combine(aRows,fRows);
+  const actTotal=aSum.reduce((a,b)=>a+b,0), fcTotal=fSum.reduce((a,b)=>a+b,0);
+  const list=ms.map(m=>({m,a:m.actual.reduce((x,y)=>x+y,0),f:m.forecast.slice(0,HORIZON).reduce((x,y)=>x+y,0)})).sort((x,y)=>y.f+y.a-x.f-x.a);
+  let rows="";
+  for(const o of list)rows+=`<tr><td><button class="lnk" data-open="${esc(o.m.name)}">${esc(o.m.name)}</button></td><td class="n">${fmt(o.a)}</td><td class="n">${fmt(o.m.actual[nA-1])}</td><td class="n">${fmt(o.m.forecast[0])}</td><td class="n">${fmt(o.f)}</td></tr>`;
+  let blocks="";
+  for(const o of list){
+    const info=existingInfo(o.m),ar=yearRows(info.aDates,info.aVals,info.rel),fr=yearRows(info.fDates,info.fVals,0);
+    blocks+=`<details class="movie-block"><summary><strong>${esc(o.m.name)}</strong><span class="muted num">Actual ${fmt(o.a)} · Forecast ${fmt(o.f)}</span></summary><div class="inner"><div class="grid2"><div><h3>Actual by year</h3>${table(ar,{tagPartial:true})}</div><div><h3>Forecast by year</h3>${table(fr,{tagPartial:true})}</div></div></div></details>`;
+  }
+  out.innerHTML=`<div class="card"><div class="title-line"><h2>${esc(p)}</h2><span class="muted">${ms.length} movie${ms.length>1?"s":""}</span></div>
+  <dl class="facts"><div><dt>Actual ${ymLabel(DATA.month_dates[0])} – ${ymLabel(DATA.month_dates[nA-1])}</dt><dd class="num">${fmt(actTotal)}</dd></div>
+  <div class="fc"><dt>Forecast to ${lastFcLabel()}</dt><dd class="num">${fmt(fcTotal)}</dd></div></dl></div>
+  <div class="grid2"><div class="card"><h3>Actual by year</h3>${table(aRows,{tagPartial:true})}</div>
+  <div class="card"><h3>Forecast by year</h3>${table(fRows,{tagPartial:true})}</div></div>
+  <div class="card"><h2>Yearly total</h2>${chart(chartRows(aRows,fRows),"Provider yearly total revenue")}</div>
+  <div class="card"><h2>Movies</h2><div class="scroll"><table><thead><tr><th>Movie</th><th class="n">Actual to date</th><th class="n">Last actual</th><th class="n">Next month</th><th class="n">Forecast (horizon)</th></tr></thead><tbody>${rows}</tbody></table></div></div>
+  <h2 style="font-size:15.5px;margin:22px 0 10px">Yearly tables by movie</h2>${blocks}`;
+  out.querySelectorAll("[data-open]").forEach(b=>b.addEventListener("click",()=>{$("movieSearch").value=b.dataset.open;setMovie(b.dataset.open);showTab("movie");}));
+}
+function setProvider(name){if(DATA.movies.some(m=>m.provider===name)){current.provider=name;renderProvider();}}
+
+/* ---------------- shell ---------------- */
+function showTab(t){
+  document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t));
+  document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("active",p.id==="panel-"+t));
+}
+function rerender(){renderMovie();renderManual();renderProvider();}
+function init(){
+  const nA=DATA.month_dates.length;
+  $("subline").textContent=`${DATA.movies.filter(m=>m.group!=="none").length} movies with revenue · ${new Set(DATA.movies.map(m=>m.provider)).size} content providers · actuals ${ymLabel(DATA.month_dates[0])} to ${ymLabel(DATA.month_dates[nA-1])} · forecast up to ${ymLabel(DATA.forecast_dates[DATA.forecast_dates.length-1])}`;
+  const hs=$("horizon"),maxH=DATA.forecast_dates.length;
+  for(let h=3;h<=maxH;h++){const o=document.createElement("option");o.value=h;o.textContent=`${h} months (to ${ymLabel(DATA.forecast_dates[h-1])})`;hs.appendChild(o);}
+  HORIZON=maxH;hs.value=String(maxH);
+  hs.addEventListener("change",()=>{HORIZON=+hs.value;rerender();});
+  const byTotal=[...DATA.movies].sort((a,b)=>b.actual.reduce((x,y)=>x+y,0)-a.actual.reduce((x,y)=>x+y,0));
+  $("movieList").innerHTML=byTotal.map(m=>`<option value="${esc(m.name)}">${esc(m.provider)}</option>`).join("");
+  const provTot={};for(const m of DATA.movies)provTot[m.provider]=(provTot[m.provider]||0)+m.actual.reduce((x,y)=>x+y,0);
+  const provs=Object.keys(provTot).sort((a,b)=>provTot[b]-provTot[a]);
+  $("provList").innerHTML=provs.map(p=>`<option value="${esc(p)}">`).join("");
+  $("movieSearch").addEventListener("input",e=>setMovie(e.target.value));
+  $("provSearch").addEventListener("input",e=>setProvider(e.target.value));
+  document.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click",()=>showTab(b.dataset.tab)));
+  $("mGo").addEventListener("click",renderManual);
+  $("mEx").addEventListener("click",()=>{$("mName").value="Example release";$("mStart").value="2026-02";$("mVals").value="48000, 36500, 29000, 24500, 21000";renderManual();});
+  current.movie=byTotal[0];$("movieSearch").value=byTotal[0].name;
+  current.provider=provs[0];$("provSearch").value=provs[0];
+  $("scope").textContent="Forecasts cover the movies already in the data. Movies that have not been released yet are not included; add a planned release in New / Manual Entry.";
+  $("foot").textContent="";
+  rerender();
+}
+async function boot(){
+  try{
+    if(window.__EMBED__){MODEL=window.__EMBED__.model;DATA=window.__EMBED__.movies;}
+    else{
+      const [m,d]=await Promise.all([fetch("data/model.json"),fetch("data/movies.json")]);
+      if(!m.ok||!d.ok)throw new Error("HTTP "+m.status+"/"+d.status);
+      MODEL=await m.json();DATA=await d.json();
+    }
+    init();
+  }catch(e){
+    $("subline").textContent="Data could not be loaded";
+    $("loadmsg").innerHTML='<div class="msg"><strong>Could not load data/model.json and data/movies.json.</strong> Browsers block these files when index.html is opened by double-click. Serve the folder with a local server instead (for example, VS Code Live Server, or run <code>python -m http.server</code> in this folder and open http://localhost:8000). The standalone .html version opens without a server.</div>';
+  }
+}
+boot();
+</script>
+</body>
+</html>
